@@ -1,11 +1,13 @@
 import Foundation
 import SwiftUI
+import Combine
 
 final class AlarmStore: ObservableObject {
-    @AppStorage("alarmsData") private var alarmsData: Data = Data()
-    @Published var alarms: [AlarmSetting] = [] {
-        didSet { save() }
-    }
+
+    @AppStorage("alarmsData")
+    private var alarmsData: Data = Data()
+
+    @Published var alarms: [AlarmSetting] = []
 
     init() {
         load()
@@ -13,16 +15,19 @@ final class AlarmStore: ObservableObject {
 
     func add(_ alarm: AlarmSetting) {
         alarms.append(alarm)
+        save()
     }
 
     func update(_ alarm: AlarmSetting) {
         if let idx = alarms.firstIndex(where: { $0.id == alarm.id }) {
             alarms[idx] = alarm
+            save()
         }
     }
 
     func remove(_ alarm: AlarmSetting) {
         alarms.removeAll { $0.id == alarm.id }
+        save()
     }
 
     private func save() {
@@ -36,9 +41,12 @@ final class AlarmStore: ObservableObject {
 
     private func load() {
         guard !alarmsData.isEmpty else { return }
+
         do {
-            let decoded = try JSONDecoder().decode([AlarmSetting].self, from: alarmsData)
-            alarms = decoded
+            alarms = try JSONDecoder().decode(
+                [AlarmSetting].self,
+                from: alarmsData
+            )
         } catch {
             print("Failed to load alarms: \(error)")
         }

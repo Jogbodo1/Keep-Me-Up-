@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum Weekday: String, CaseIterable, Hashable {
+enum Weekday: String, CaseIterable, Hashable, Codable {   // ADDED Codable
     case sunday = "Sun"
     case monday = "Mon"
     case tuesday = "Tue"
@@ -12,7 +12,7 @@ enum Weekday: String, CaseIterable, Hashable {
 
 struct DayOfWeekSelector: View {
     @Binding var selectedDays: Set<Weekday>
-    
+
     var body: some View {
         VStack {
             ForEach(Weekday.allCases, id: \.self) { day in
@@ -31,4 +31,3 @@ struct DayOfWeekSelector: View {
         .padding()
     }
 }
-

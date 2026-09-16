@@ -39,9 +39,22 @@
 		D91E86123022BE9B00C98684 /* Keep Me Up! Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Keep Me Up! Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D9876805305A525C005CFED9 /* Exceptions for "Keep Me Up! Watch App" folder in "Keep Me Up! Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Keep-Me-Up--Watch-App-Info.plist",
+			);
+			target = D91E86113022BE9B00C98684 /* Keep Me Up! Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D91E86163022BE9B00C98684 /* Keep Me Up! Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D9876805305A525C005CFED9 /* Exceptions for "Keep Me Up! Watch App" folder in "Keep Me Up! Watch App" target */,
+			);
 			path = "Keep Me Up! Watch App";
 			sourceTree = "<group>";
 		};
@@ -319,6 +332,7 @@
 				DEVELOPMENT_TEAM = WKJZTFJ353;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Keep-Me-Up--Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Keep Me Up!";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKWatchOnly = YES;
@@ -352,6 +366,7 @@
 				DEVELOPMENT_TEAM = WKJZTFJ353;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Keep-Me-Up--Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Keep Me Up!";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKWatchOnly = YES;

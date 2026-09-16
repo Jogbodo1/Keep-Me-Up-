@@ -1,6 +1,6 @@
 import Foundation
 
-struct AlarmSetting: Identifiable {
+struct AlarmSetting: Identifiable, Codable {   // ADDED Codable — required so AlarmStore can persist it
     var id = UUID()
     var time: Date
     var days: Set<Weekday>
@@ -9,3 +9,4 @@ struct AlarmSetting: Identifiable {
     var requireMovement: Bool = false
     var monitoringMinutes: Int = 60
 }
+
