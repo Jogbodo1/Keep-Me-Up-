@@ -1,15 +1,19 @@
 import Foundation
 import Combine
 import WatchKit
+import AVFoundation
 
 final class AlarmEngine: ObservableObject {
     @Published private(set) var isRinging: Bool = false
     @Published private(set) var activeAlarm: AlarmSetting? = nil
-    @Published private(set) var timeRemaining: Int = 0     // ADDED: seconds left in the compliance window
-    @Published private(set) var timeExpired: Bool = false  // ADDED: true once the window has run out
-    @Published private(set) var giveMeFiveUsed: Bool = false  // ADDED: tracks the one-time "Give me 5" use
+    @Published private(set) var timeRemaining: Int = 0
+    @Published private(set) var timeExpired: Bool = false
+    @Published private(set) var giveMeFiveUsed: Bool = false
 
-    private var giveMeFiveUntil: Date? = nil                  // ADDED: vibrations paused until this time
+    private var giveMeFiveUntil: Date? = nil
+    private var audioPlayer: AVAudioPlayer?
+    private var movementDetectionCount = 0
+    private var isCurrentlyComplying: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
     private var complianceDeadline: Date? = nil
@@ -21,14 +25,11 @@ final class AlarmEngine: ObservableObject {
         self.motionMonitor = motionMonitor
     }
 
-    // ADDED: only true when Strict Mode is off and Movement Required is on — that's
-    // the one combination that otherwise has no way to exit before time runs out.
     var giveMeFiveAvailable: Bool {
         guard let alarm = activeAlarm else { return false }
         return !alarm.strictMode && alarm.requireMovement && !giveMeFiveUsed
     }
 
-    // ADDED: pauses reprompt vibrations for 5 minutes of the countdown. One-time use per alarm.
     func activateGiveMeFive() {
         guard giveMeFiveAvailable else { return }
         giveMeFiveUsed = true
@@ -39,8 +40,10 @@ final class AlarmEngine: ObservableObject {
         activeAlarm = alarm
         isRinging = true
         timeExpired = false
-        giveMeFiveUsed = false   // ADDED: fresh allowance for this alarm
-        giveMeFiveUntil = nil    // ADDED
+        giveMeFiveUsed = false
+        giveMeFiveUntil = nil
+        movementDetectionCount = 0
+        isCurrentlyComplying = false
         playHaptic()
 
         guard requireMovement else {
@@ -52,21 +55,43 @@ final class AlarmEngine: ObservableObject {
         complianceDeadline = deadline
         timeRemaining = monitoringMinutes * 60
 
-        // ADDED: ticks every second so the ringing view can show a live countdown
         countdownTimer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 self?.tickCountdown()
             }
 
+        let requiredConsecutiveDetections = 3
+       
         motionMonitor.$isStandingAndMoving
             .receive(on: RunLoop.main)
             .sink { [weak self] moving in
                 guard let self = self else { return }
+               
                 if moving {
-                    self.stopRinging()
+                    self.movementDetectionCount += 1
+                    print("Movement detected: \(self.movementDetectionCount)/\(requiredConsecutiveDetections)")
+                   
+                    if self.movementDetectionCount >= requiredConsecutiveDetections {
+                        print("Sustained movement confirmed - user is awake")
+                        self.isCurrentlyComplying = true
+                        self.stopAudio()
+                    }
                 } else {
-                    self.repromptIfNeeded()
+                    if self.movementDetectionCount > 0 {
+                        print("Movement ended, resetting counter")
+                    }
+                    self.movementDetectionCount = 0
+                   
+                    if self.isCurrentlyComplying {
+                        print("User laid back down - resuming alarm")
+                        self.isCurrentlyComplying = false
+                        self.playHaptic()
+                    }
+                   
+                    if self.isRinging {
+                        self.repromptIfNeeded()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -78,8 +103,9 @@ final class AlarmEngine: ObservableObject {
         guard let deadline = complianceDeadline else { return }
         let remaining = Int(deadline.timeIntervalSinceNow.rounded(.up))
         timeRemaining = max(0, remaining)
+       
         if timeRemaining == 0 {
-            timeExpired = true      // ADDED: view watches this to reveal the Exit button
+            timeExpired = true
             countdownTimer?.cancel()
         }
     }
@@ -89,31 +115,65 @@ final class AlarmEngine: ObservableObject {
         activeAlarm = nil
         timeRemaining = 0
         timeExpired = false
-        giveMeFiveUsed = false     // ADDED: reset so it's available again for the next alarm
-        giveMeFiveUntil = nil      // ADDED
+        giveMeFiveUsed = false
+        giveMeFiveUntil = nil
         complianceDeadline = nil
+        movementDetectionCount = 0
+        isCurrentlyComplying = false
         motionMonitor.stopMonitoring()
         cancellables.removeAll()
         countdownTimer?.cancel()
         countdownTimer = nil
+        stopAudio()
     }
 
     private func repromptIfNeeded() {
         guard let deadline = complianceDeadline else { return }
-        // ADDED: if "Give me 5" is active, skip the vibration entirely — the
-        // countdown itself keeps running as normal, only the reprompt is silenced.
         if let pausedUntil = giveMeFiveUntil, Date() < pausedUntil {
             return
         }
         if Date() < deadline {
             playHaptic()
         }
-        // CHANGED: this used to auto-call stopRinging() once the deadline passed.
-        // Now the countdown timer flips timeExpired instead, and the person exits
-        // manually via the button in AlarmRingingView — that's the behavior you asked for.
     }
 
     private func playHaptic() {
         WKInterfaceDevice.current().play(.notification)
+        playSound()
+    }
+
+    private func playSound() {
+        let soundNames = ["alarm_sound", "alarm", "bell", "chime"]
+        let fileExtensions = ["wav", "m4a", "mp3", "caf"]
+       
+        for soundName in soundNames {
+            for ext in fileExtensions {
+                if let soundPath = Bundle.main.path(forResource: soundName, ofType: ext) {
+                    playAudioFile(at: soundPath)
+                    return
+                }
+            }
+        }
+       
+        print("Warning: No alarm sound file found in bundle")
+    }
+
+    private func playAudioFile(at path: String) {
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
+            audioPlayer?.numberOfLoops = -1
+            audioPlayer?.volume = 1.0
+            audioPlayer?.play()
+            print("Audio playback started")
+        } catch {
+            print("Failed to play audio: \(error)")
+        }
+    }
+
+    private func stopAudio() {
+        if audioPlayer?.isPlaying ?? false {
+            audioPlayer?.stop()
+        }
+        audioPlayer = nil
     }
 }

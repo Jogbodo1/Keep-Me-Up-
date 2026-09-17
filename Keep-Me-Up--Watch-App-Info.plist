@@ -13,5 +13,7 @@
 	<array>
 		<string>alarm</string>
 	</array>
+	<key>workout-processing</key>
+	<string></string>
 </dict>
 </plist>
